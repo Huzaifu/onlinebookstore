@@ -15,7 +15,7 @@ pipeline{
         stage('delpoy'){
             steps{
             sh '''
-                mv */target/onlinebookstore.war /opt/tomcat/webapps
+                mv "$warfile" /opt/tomcat/webapps
             '''
             }
         }
