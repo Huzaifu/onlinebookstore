@@ -15,7 +15,7 @@ pipeline{
         stage('delpoy'){
             steps{
             sh '''
-                mv "$warfile" /opt/tomcat/webapps
+                mv "/var/lib/jenkins/workspace/jenkins_docker_project_1/target" "/opt/tomcat/webapps/"
             '''
             }
         }
