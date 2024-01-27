@@ -1,11 +1,23 @@
-pipeline {  
-    agent any  
-        stages {  
-       	    stage("git_checkout") {  
-           	    steps {  
-              	    echo "cloning repository" 
-              	    echo "repo cloned successfully"  
-              	    }  
-         	    } 
+pipeline{
+    agent any
+
+    stages{
+        stage('checkout'){
+            steps{
+            git branch: "master", url: "https://github.com/shashirajraja/onlinebookstore.git" 
+            }
         }
+        stage('build'){
+            steps{
+            sh 'mvn clean install'
+            }
+        }
+        stage('delpoy'){
+            steps{
+            sh '''
+                mv /target/onlinebookstore.war /opt/tomcat/webapps
+            '''
+            }
+        }
+    }
 }
