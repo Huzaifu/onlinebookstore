@@ -54,7 +54,7 @@ pipeline{
         }
         stage('Run this image'){
             steps{
-                sh 'docker run -p 8082:8080 huzaifasarfraz/onlinebookstore'
+                sh 'docker run -p -d 8082:8080 huzaifasarfraz/onlinebookstore'
             }
         }
     }
