@@ -31,7 +31,7 @@ pipeline{
         }
         stage('Login to DockerHub'){
             steps{
-                sh 'docker login -u huzaifsarfraz -p pakistan.2203.'
+                sh 'docker login -u huzaifasarfraz -p pakistan.2203.'
             }
         }
         stage('Push this image'){
