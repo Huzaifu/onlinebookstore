@@ -5,5 +5,5 @@ RUN mvn clean install
 
 FROM tomcat:9.0.84
 WORKDIR /app
-COPY onlinebookstore.war /opt/tomcat/webapps/
+COPY /target/onlinebookstore.war /opt/tomcat/webapps/
 EXPOSE 8080
