@@ -1,0 +1,151 @@
+---
+- name: Install Java, Jenkins, and Tomcat 9
+  hosts: localhost
+  become: yes
+
+  tasks:
+    # -------------------------------
+    # Install Java
+    # -------------------------------
+    - name: Ensure apt cache is updated
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install OpenJDK 17
+      apt:
+        name: openjdk-17-jdk
+        state: present
+
+    # -------------------------------
+    # Install Docker
+    # -------------------------------
+
+    - name: Install docker.io package
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker service is enabled and running
+      systemd:
+        name: docker
+        enabled: yes
+        state: started
+
+    # -------------------------------
+    # Install Jenkins
+    # -------------------------------
+    - name: Add Jenkins GPG key
+      get_url:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        dest: /etc/apt/keyrings/jenkins-keyring.asc
+        mode: '0644'
+
+    - name: Add Jenkins repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+        filename: jenkins
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+        update_cache: yes
+
+    - name: Ensure Jenkins is enabled and running
+      systemd:
+        name: jenkins
+        enabled: yes
+        state: started
+
+    # -------------------------------
+    # Install Tomcat 9 manually
+    # -------------------------------
+    - name: Download Tomcat 9.0.109
+      get_url:
+        url: https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.109/bin/apache-tomcat-9.0.109.tar.gz
+        dest: /tmp/apache-tomcat-9.0.109.tar.gz
+
+    - name: Extract Tomcat
+      unarchive:
+        src: /tmp/apache-tomcat-9.0.109.tar.gz
+        dest: /opt
+        remote_src: yes
+      notify: Change Tomcat Port
+
+    - name: Symlink Tomcat directory
+      command: mv /opt/apache-tomcat-9.0.109 /opt/tomcat9
+      args:
+        creates: /opt/tomcat9
+
+    - name: Create Tomcat user
+      user:
+        name: tomcat
+        home: /opt/tomcat9
+        shell: /bin/false
+        system: yes
+        create_home: no
+
+    - name: Set ownership for Tomcat
+      file:
+        path: /opt/tomcat9
+        state: directory
+        owner: tomcat
+        group: tomcat
+        recurse: yes
+
+    - name: Ensure Tomcat scripts are executable
+      file:
+        path: /opt/tomcat9/bin
+        mode: '0755'
+        recurse: yes
+
+    - name: Create Tomcat systemd service
+      copy:
+        dest: /etc/systemd/system/tomcat.service
+        content: |
+          [Unit]
+          Description=Apache Tomcat 9
+          After=network.target
+
+          [Service]
+          Type=forking
+          User=tomcat
+          Group=tomcat
+
+          Environment="JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64"
+          Environment="CATALINA_PID=/opt/tomcat9/temp/tomcat.pid"
+          Environment="CATALINA_HOME=/opt/tomcat9"
+          Environment="CATALINA_BASE=/opt/tomcat9"
+          Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
+          Environment="JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom"
+
+          ExecStart=/opt/tomcat9/bin/startup.sh
+          ExecStop=/opt/tomcat9/bin/shutdown.sh
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start Tomcat
+      systemd:
+        name: tomcat
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Change Tomcat Port
+      replace:
+        path: /opt/tomcat9/conf/server.xml
+        regexp: 'port="8080"'
+        replace: 'port="8081"'
+      notify: Restart Tomcat
+
+    - name: Restart Tomcat
+      systemd:
+        name: tomcat
+        state: restarted
